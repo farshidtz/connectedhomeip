@@ -17,6 +17,8 @@
  *    limitations under the License.
  */
 
+#include "LightingManager.h"
+
 #include <lib/support/logging/CHIPLogging.h>
 
 #include <wiringPi.h>
@@ -26,6 +28,9 @@ LightingManager LightingManager::sLight;
 CHIP_ERROR LightingManager::Init()
 {
     mState = kState_On;
+    wiringPiSetup();                   
+    pinMode(1, OUTPUT);// Configure PIN12(wPi PIN 1) as an GPIO output
+    
     return CHIP_NO_ERROR;
 }
 
@@ -94,9 +99,11 @@ void LightingManager::Set(bool aOn)
     if (aOn)
     {
         mState = kState_On;
+        digitalWrite(1, HIGH);
     }
     else
     {
         mState = kState_Off;
+        digitalWrite(1, LOW);
     }
 }

@@ -36,12 +36,13 @@ config("includes") {
 executable("chip-lighting-app") {
   sources = [
     "include/CHIPProjectAppConfig.h",
+    "include/LightingManager.h",
+    "src/LightingManager.cpp",
     "main.cpp",
   ]
 
   deps = [
     "${chip_root}/examples/lighting-app/lighting-common",
-    "${chip_root}/examples/lighting-app/lighting-common:lighting-manager",
     "${chip_root}/examples/platform/linux:app-main",
     "${chip_root}/src/lib",
   ]

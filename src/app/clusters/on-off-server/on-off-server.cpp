@@ -28,8 +28,6 @@
 #include <app/clusters/scenes/scenes.h>
 #endif // EMBER_AF_PLUGIN_SCENES
 
-#include <wiringPi.h>
-
 using namespace chip;
 using namespace chip::app::Clusters;
 using namespace chip::app::Clusters::OnOff;
@@ -115,9 +113,6 @@ EmberAfStatus OnOffServer::setOnOffValue(chip::EndpointId endpoint, chip::Comman
     newValue = !currentValue;
     emberAfOnOffClusterPrintln("Toggle on/off from %x to %x", currentValue, newValue);
 
-    wiringPiSetup();                   
-    pinMode(1, OUTPUT);// Configure PIN12(wPi PIN 1) as an GPIO output
-
     // the sequence of updating on/off attribute and kick off level change effect should
     // be depend on whether we are turning on or off. If we are turning on the light, we
     // should update the on/off attribute before kicking off level change, if we are
@@ -129,7 +124,6 @@ EmberAfStatus OnOffServer::setOnOffValue(chip::EndpointId endpoint, chip::Comman
         {
             uint16_t onTime = 0;
             Attributes::OnTime::Get(endpoint, &onTime);
-            digitalWrite(1, HIGH);
 
             if (onTime == 0)
             {
@@ -184,7 +178,6 @@ EmberAfStatus OnOffServer::setOnOffValue(chip::EndpointId endpoint, chip::Comman
         {
             emberAfOnOffClusterPrintln("Off Command - OnTime :  0");
             Attributes::OnTime::Set(endpoint, 0); // Reset onTime
-            digitalWrite(1, LOW);
         }
 
 #ifdef EMBER_AF_PLUGIN_LEVEL_CONTROL
