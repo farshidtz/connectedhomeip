@@ -16,7 +16,7 @@
  *    limitations under the License.
  */
 
-// #include "LightingManager.h"
+#include "LightingManager.h"
 #include <AppMain.h>
 
 #include <app-common/zap-generated/ids/Attributes.h>
@@ -39,15 +39,14 @@ Clusters::NetworkCommissioning::Instance sWiFiNetworkCommissioningInstance(0, &s
 } // namespace
 #endif
 
-// void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & attributePath, uint8_t type, uint16_t size,
-//                                        uint8_t * value)
-// {
-//     if (attributePath.mClusterId == OnOff::Id && attributePath.mAttributeId == OnOff::Attributes::OnOff::Id)
-//     {
-//         LightingMgr().InitiateAction(*value ? LightingManager::ON_ACTION : LightingManager::OFF_ACTION);
-//     }
-//     std::cout << "--------------------";
-// }
+void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath & attributePath, uint8_t type, uint16_t size,
+                                       uint8_t * value)
+{
+    if (attributePath.mClusterId == OnOff::Id && attributePath.mAttributeId == OnOff::Attributes::OnOff::Id)
+    {
+        LightingMgr().InitiateAction(*value ? LightingManager::ON_ACTION : LightingManager::OFF_ACTION);
+    }
+}
 
 /** @brief OnOff Cluster Init
  *
@@ -83,10 +82,8 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    // LightingMgr().Init();
+    LightingMgr().Init();
     ChipLinuxAppMainLoop();
-
-    std::cout << "2 ------------------------";
 
     return 0;
 }

@@ -16,6 +16,10 @@ import("//build_overrides/chip.gni")
 import("${chip_root}/examples/common/pigweed/pigweed_rpcs.gni")
 import("${chip_root}/src/app/chip_data_model.gni")
 
+config("config") {
+  include_dirs = [ "include" ]
+}
+
 chip_data_model("light-switch-common") {
   zap_file = "light-switch-app.zap"
 
@@ -23,4 +27,13 @@ chip_data_model("light-switch-common") {
       "${chip_root}/zzz_generated/light-switch-app/zap-generated"
 
   is_server = true
+}
+
+source_set("lighting-manager") {
+  deps = [ "${chip_root}/src/lib" ]
+  public_configs = [ ":config" ]
+  sources = [
+    "include/LightingManager.h",
+    "src/LightingManager.cpp",
+  ]
 }
