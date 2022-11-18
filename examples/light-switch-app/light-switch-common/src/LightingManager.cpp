@@ -20,6 +20,7 @@
 #include "LightingManager.h"
 
 #include <lib/support/logging/CHIPLogging.h>
+#include <wiringPi.h>
 
 LightingManager LightingManager::sLight;
 
@@ -91,12 +92,16 @@ bool LightingManager::InitiateAction(Action_t aAction)
 
 void LightingManager::Set(bool aOn)
 {
+    wiringPiSetup();                   
+    pinMode(1, OUTPUT);// Configure PIN12(wPi PIN 1) as an GPIO output
     if (aOn)
     {
         mState = kState_On;
+        digitalWrite(1, HIGH);
     }
     else
     {
         mState = kState_Off;
+        digitalWrite(1, LOW);
     }
 }
