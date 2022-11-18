@@ -54,21 +54,22 @@ sudo reboot
 
 ### 2. build
 
-#### 1. run gn:
-
-```
-source connectedhomeip/scripts/activate.sh
-# This step may take a few minutes; please be patient.
-
-gn gen ~/connectedhomeip/examples/lighting-app/linux/out/build
-```
-
-#### 2. build [wiringPi](https://github.com/WiringPi/WiringPi) library:
+#### 1. build [wiringPi](https://github.com/WiringPi/WiringPi) library:
 
 ```
 git clone https://github.com/WiringPi/WiringPi --branch master --single-branch wiringpi
 cd ~/wiringpi
 sudo ./build
+```
+
+#### 2. run gn:
+
+```
+source ~/connectedhomeip/scripts/activate.sh
+# Depending on the machines, this step may take some time
+
+cd ~/connectedhomeip/examples/lighting-app/linux/
+gn gen out/build
 ```
 
 #### 3. add wiringPi to ninja file:
@@ -85,13 +86,13 @@ so it will look like: libs = -ldl -lpthread -lrt -lssl -lcrypto -lgio-2.0
 #### 4. run ninja:
 
 ```
-ninja -C ~/connectedhomeip/examples/lighting-app/linux/out/build
+ninja -C out/build
 ```
 
 ## (Pi) Run lighting GPIO application
 
 ```
-sudo ./chip-lighting-app --wifi
+sudo ./out/build/chip-lighting-app --wifi
 ```
 
 ## (Laptop) Pair the lighting GPIO application over WiFi
@@ -100,6 +101,8 @@ Build chip-tool as a Matter controller:
 
 ```
 git clone https://github.com/MonicaisHer/connectedhomeip.git
+cd connectedhomeip
+
 # Remove unused large submodules
 git rm third_party/bouffalolab/repo # 7G
 git rm third_party/mbed-os/repo
@@ -124,7 +127,7 @@ sed '/activate.sh/s/^/#/' scripts/examples/gn_build_example.sh
 Run chip-tool:
 
 ```
-sudo ~/connectedhomeip/chip-tool pairing onnetwork 123 20202021
+sudo ./chip-tool pairing onnetwork 123 20202021
 # 123: an user defined node id
 # 20202021: lighting-gpio-app setup pin code
 ```
@@ -148,7 +151,7 @@ CHIP:TOO: Device commissioning completed with success
 ## (Laptop) Control the lighting GPIO application
 
 ```
-sudo ~/connectedhomeip/build-examples/chip-tool onoff toggle 0x000000000000007B 1
+sudo ./chip-tool onoff toggle 0x000000000000007B 1
 # 0x7B = 123
 ```
 
