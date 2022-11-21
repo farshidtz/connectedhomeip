@@ -8,7 +8,7 @@
 
 Connect them as below:
 
-![](./circus.png)
+![](./circuit.png)
 
 then, connect ethernet cable to the Raspberry Pi, or
 [set up WiFi](https://huobur.medium.com/how-to-setup-wifi-on-raspberry-pi-4-with-ubuntu-20-04-lts-64-bit-arm-server-ceb02303e49b).
@@ -54,7 +54,7 @@ sudo reboot
 
 ### 2. build
 
-#### 1. build [wiringPi](https://github.com/WiringPi/WiringPi) library:
+Build [wiringPi](https://github.com/WiringPi/WiringPi) library:
 
 ```
 git clone https://github.com/WiringPi/WiringPi --branch master --single-branch wiringpi
@@ -62,7 +62,7 @@ cd ~/wiringpi
 sudo ./build
 ```
 
-#### 2. run gn:
+Run gn:
 
 ```
 source ~/connectedhomeip/scripts/activate.sh
@@ -72,18 +72,18 @@ cd ~/connectedhomeip/examples/lighting-app/linux/
 gn gen out/build
 ```
 
-#### 3. add wiringPi to ninja file:
-
-add `-lwiringPi` to `libs`
+Append `-lwiringPi` to `libs` in chip-lighting-app.ninja file:
 
 ```
 sudo nano ~/connectedhomeip/examples/lighting-app/linux/out/build/obj/chip-lighting-app.ninja
 ```
 
-so it will look like: libs = -ldl -lpthread -lrt -lssl -lcrypto -lgio-2.0
--lgobject-2.0 -lglib-2.0 **-lwiringPi**
+so it will look like:
 
-#### 4. run ninja:
+libs = -ldl -lpthread -lrt -lssl -lcrypto -lgio-2.0 -lgobject-2.0 -lglib-2.0
+**-lwiringPi**
+
+Then, run ninja:
 
 ```
 ninja -C out/build
@@ -132,7 +132,7 @@ sudo ./chip-tool pairing onnetwork 123 20202021
 # 20202021: lighting-gpio-app setup pin code
 ```
 
-chip-lghting-app logs:
+Check chip-lghting-app logs:
 
 ```
 ...
@@ -140,7 +140,7 @@ CHIP:SVR: Commissioning completed successfully
 ...
 ```
 
-chip-tool logs:
+Check chip-tool logs:
 
 ```
 ...
@@ -155,4 +155,4 @@ sudo ./chip-tool onoff toggle 0x000000000000007B 1
 # 0x7B = 123
 ```
 
-You should see the LED could be turned on/off.
+You should see the LED could be turned on/off now.
