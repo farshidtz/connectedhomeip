@@ -72,7 +72,7 @@ cd ~/connectedhomeip/examples/lighting-app/linux/
 gn gen out/build
 ```
 
-Append `-lwiringPi` to `libs` in chip-lighting-app.ninja file:
+Append `-lwiringPi` linker flag to `libs` in chip-lighting-app.ninja file for the compiler to use wiringPi library:
 
 ```
 sudo nano ~/connectedhomeip/examples/lighting-app/linux/out/build/obj/chip-lighting-app.ninja
