@@ -62,7 +62,9 @@ cd ~/wiringpi
 sudo ./build
 ```
 
-Run gn:
+The `BUILD.gn` file has been modified to have `wiringPi` lib linker.
+
+Build:
 
 ```
 source ~/connectedhomeip/scripts/activate.sh
@@ -70,22 +72,6 @@ source ~/connectedhomeip/scripts/activate.sh
 
 cd ~/connectedhomeip/examples/lighting-app/linux/
 gn gen out/build
-```
-
-Append `-lwiringPi` linker flag to `libs` in chip-lighting-app.ninja file for the compiler to use wiringPi library:
-
-```
-sudo nano ~/connectedhomeip/examples/lighting-app/linux/out/build/obj/chip-lighting-app.ninja
-```
-
-so it will look like:
-
-libs = -ldl -lpthread -lrt -lssl -lcrypto -lgio-2.0 -lgobject-2.0 -lglib-2.0
-**-lwiringPi**
-
-Then, run ninja:
-
-```
 ninja -C out/build
 ```
 
