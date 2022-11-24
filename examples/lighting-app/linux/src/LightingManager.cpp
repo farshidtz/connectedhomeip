@@ -22,7 +22,7 @@
 #include <lib/support/logging/CHIPLogging.h>
 #include <wiringPi.h>
 
-const int wiringPiPin = 1
+const int wiringPiPin = 1;
 
 LightingManager LightingManager::sLight;
 
