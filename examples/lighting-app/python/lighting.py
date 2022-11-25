@@ -14,6 +14,10 @@
 #    limitations under the License.
 #
 
+# To run, execute the following inside the Python Virtual Env:
+# pip install PyP100
+# IP="" USER="" PASS="" python lighting.py
+
 from chip.server import (
     GetLibraryHandle,
     NativeLibraryHandleMethodArguments,
@@ -35,40 +39,82 @@ from cmd import Cmd
 import asyncio
 import threading
 
-from dali.driver.hid import tridonic
-from dali.gear.general import RecallMaxLevel, Off, DAPC
-from dali.address import Broadcast, Short
+# from dali.driver.hid import tridonic
+# from dali.gear.general import RecallMaxLevel, Off, DAPC
+# from dali.address import Broadcast, Short
+from PyP100 import PyL530
 
 dali_loop = None
 dev = None
+color = {}
 
-
-async def dali_on(is_on: bool):
+async def switch_on():
     global dali_loop
     global dev
 
-    await dev.connected.wait()
-    if (is_on):
-        await dev.send(RecallMaxLevel(Broadcast()))
-    else:
-        await dev.send(Off(Broadcast()))
+    print("switch on")
+    dev.turnOn()
 
+    # await dev.connected.wait()
+    # if (is_on):
+    #     await dev.send(RecallMaxLevel(Broadcast()))
+    # else:
+    #     await dev.send(Off(Broadcast()))
+
+async def switch_off():
+    global dali_loop
+    global dev
+
+    print("switch off")
+    dev.turnOff()
 
 async def dali_level(level: int):
     global dali_loop
     global dev
 
-    await dev.connected.wait()
-    await dev.send(DAPC(Broadcast(), level))
+    print("set level")
+    dev.setBrightness(level)
 
+    # await dev.connected.wait()
+    # await dev.send(DAPC(Broadcast(), level))
+
+async def set_color(level: dict):
+    global dali_loop
+    global dev
+
+    print("set color")
+    dev.setColor(level['hue'], level['saturation'])
+
+    # await dev.connected.wait()
+    # await dev.send(DAPC(Broadcast(), level))
+
+
+async def set_color_temperature(kelvin: int):
+    global dali_loop
+    global dev
+
+    print("set color temperature")
+    dev.setColorTemp(kelvin)
+
+    # await dev.connected.wait()
+    # await dev.send(DAPC(Broadcast(), level))
 
 def daliworker():
     global dali_loop
     global dev
 
+    ip = os.environ['IP']
+    user = os.environ['USER']
+    password = os.environ['PASS']
+
+    dev = PyL530.L530(ip, user, password)
+
+    dev.handshake()
+    dev.login()
+
     dali_loop = asyncio.new_event_loop()
-    dev = tridonic("/dev/dali/daliusb-*", glob=True, loop=dali_loop)
-    dev.connect()
+    # dev = tridonic("/dev/dali/daliusb-*", glob=True, loop=dali_loop)
+    # dev.connect()
 
     asyncio.set_event_loop(dali_loop)
     dali_loop.run_forever()
@@ -183,28 +229,52 @@ def attributeChangeCallback(
 ):
     global dali_loop
     if endpoint == 1:
+        print("[PT] cluster={} attr={} value={}".format(clusterId, attributeId, value))
         if clusterId == 6 and attributeId == 0:
-            if len(value) == 1 and value[0] == 1:
-                # print("[PY] light on")
+
+            if len(value) >= 1 and value[0] == 1:
+                print("[PY] light on")
                 future = asyncio.run_coroutine_threadsafe(
-                    dali_on(True), dali_loop)
+                    switch_on(), dali_loop)
                 future.result()
             else:
-                # print("[PY] light off")
+                
+                print("[PY] light off")
                 future = asyncio.run_coroutine_threadsafe(
-                    dali_on(False), dali_loop)
+                    switch_off(), dali_loop)
                 future.result()
         elif clusterId == 8 and attributeId == 0:
-            if len(value) == 2:
-                # print("[PY] level {}".format(value[0]))
+            if len(value) >= 1:
+                print("[PY] level {}".format(value[0]))
+                # TODO: skip if light has been switched off
                 future = asyncio.run_coroutine_threadsafe(
                     dali_level(value[0]), dali_loop)
                 future.result()
             else:
                 print("[PY] no level")
+        elif clusterId == 768:
+            if len(value) >= 0:
+                global color
+                if attributeId == 0:
+                    print("[PY] color hue={}".format(value[0]))
+                    color['hue']=value[0]
+                elif attributeId == 1:
+                    print("[PY] color saturation={}".format(value[0]))
+                    color['saturation']=value[0]
+                elif attributeId == 7:
+                    print("[PY] color temperature={}".format(value[0]))
+                    future = asyncio.run_coroutine_threadsafe(
+                        set_color_temperature(value[0]), dali_loop)
+                    future.result()
+
+                if (attributeId == 0 or attributeId == 1) and 'hue' in color and 'saturation' in color:
+                    print("[PY] color={}".format(color))
+                    future = asyncio.run_coroutine_threadsafe(
+                        set_color(color), dali_loop)
+                    future.result()
         else:
-            # print("[PY] [ERR] unhandled cluster {} or attribute {}".format(
-            #     clusterId, attributeId))
+            print("[PY] [ERR] unhandled cluster {} or attribute {}".format(
+                 clusterId, attributeId))
             pass
     else:
         print("[PY] [ERR] unhandled endpoint {} ".format(endpoint))
