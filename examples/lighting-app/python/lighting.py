@@ -47,13 +47,16 @@ from PyP100 import PyL530
 dali_loop = None
 dev = None
 color = {}
+switchedOn = None
 
 async def switch_on():
     global dali_loop
     global dev
+    global switchedOn
 
     print("switch on")
     dev.turnOn()
+    switchedOn = True
 
     # await dev.connected.wait()
     # if (is_on):
@@ -64,16 +67,22 @@ async def switch_on():
 async def switch_off():
     global dali_loop
     global dev
+    global switchedOn
 
     print("switch off")
     dev.turnOff()
+    switchedOn = False
 
-async def dali_level(level: int):
+async def set_level(level: int):
     global dali_loop
     global dev
+    global switchedOn
 
-    print("set level")
-    dev.setBrightness(level)
+    # The level setting is stored and resubmitted with every on/off command.
+    # Skip when off or unknown, because setting level turns on the Tapo light.
+    if switchedOn or switchedOn is None:
+        print("set level")
+        dev.setBrightness(level)
 
     # await dev.connected.wait()
     # await dev.send(DAPC(Broadcast(), level))
@@ -229,10 +238,10 @@ def attributeChangeCallback(
 ):
     global dali_loop
     if endpoint == 1:
-        print("[PT] cluster={} attr={} value={}".format(clusterId, attributeId, value))
+        print("[PT] cluster={} attr={} value={}".format(clusterId, attributeId, list(value)))
         if clusterId == 6 and attributeId == 0:
 
-            if len(value) >= 1 and value[0] == 1:
+            if value and value[0] == 1:
                 print("[PY] light on")
                 future = asyncio.run_coroutine_threadsafe(
                     switch_on(), dali_loop)
@@ -244,16 +253,15 @@ def attributeChangeCallback(
                     switch_off(), dali_loop)
                 future.result()
         elif clusterId == 8 and attributeId == 0:
-            if len(value) >= 1:
+            if value:
                 print("[PY] level {}".format(value[0]))
-                # TODO: skip if light has been switched off
                 future = asyncio.run_coroutine_threadsafe(
-                    dali_level(value[0]), dali_loop)
+                    set_level(value[0]), dali_loop)
                 future.result()
             else:
                 print("[PY] no level")
         elif clusterId == 768:
-            if len(value) >= 0:
+            if value:
                 global color
                 if attributeId == 0:
                     print("[PY] color hue={}".format(value[0]))
