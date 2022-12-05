@@ -14,10 +14,6 @@
 #    limitations under the License.
 #
 
-# To run, execute the following inside the Python Virtual Env:
-# pip install PyP100
-# IP="" USER="" PASS="" python lighting.py
-
 from chip.server import (
     GetLibraryHandle,
     NativeLibraryHandleMethodArguments,
@@ -26,54 +22,154 @@ from chip.server import (
 
 from chip.exceptions import ChipStackError
 
+from ctypes import CFUNCTYPE, c_char_p, c_int32, c_uint8
 
+import sys
 import os
+
+import textwrap
+import string
+
+from cmd import Cmd
+
 import asyncio
+import threading
 
-from PyP100 import PyL530
+from dali.driver.hid import tridonic
+from dali.gear.general import RecallMaxLevel, Off, DAPC
+from dali.address import Broadcast, Short
 
+dali_loop = None
 dev = None
-color = {}
-switchedOn = None
 
-def switch_on():
-    global dev
-    global switchedOn
 
-    print("[tapo] switch on")
-    dev.turnOn()
-    switchedOn = True
-
-def switch_off():
-    global dev
-    global switchedOn
-
-    print("[tapo] switch off")
-    dev.turnOff()
-    switchedOn = False
-
-def set_level(level: int):
-    global dev
-    global switchedOn
-
-    # The level setting is stored and resubmitted with every on/off command.
-    # Skip when off or unknown, because setting level turns on the Tapo light.
-    if switchedOn or switchedOn is None:
-        print("[tapo] set brightness level")
-        dev.setBrightness(level)
-
-def set_color(level: dict):
+async def dali_on(is_on: bool):
+    global dali_loop
     global dev
 
-    print("[tapo] set color")
-    dev.setColor(level['hue'], level['saturation'])
+    await dev.connected.wait()
+    if (is_on):
+        await dev.send(RecallMaxLevel(Broadcast()))
+    else:
+        await dev.send(Off(Broadcast()))
 
 
-def set_color_temperature(kelvin: int):
+async def dali_level(level: int):
+    global dali_loop
     global dev
 
-    print("[tapo] set color temperature")
-    dev.setColorTemp(kelvin)
+    await dev.connected.wait()
+    await dev.send(DAPC(Broadcast(), level))
+
+
+def daliworker():
+    global dali_loop
+    global dev
+
+    dali_loop = asyncio.new_event_loop()
+    dev = tridonic("/dev/dali/daliusb-*", glob=True, loop=dali_loop)
+    dev.connect()
+
+    asyncio.set_event_loop(dali_loop)
+    dali_loop.run_forever()
+
+
+class LightingMgrCmd(Cmd):
+    def __init__(self, rendezvousAddr=None, controllerNodeId=0, bluetoothAdapter=None):
+        self.lastNetworkId = None
+
+        Cmd.__init__(self)
+
+        Cmd.identchars = string.ascii_letters + string.digits + "-"
+
+        if sys.stdin.isatty():
+            self.prompt = "chip-lighting > "
+        else:
+            self.use_rawinput = 0
+            self.prompt = ""
+
+        LightingMgrCmd.command_names.sort()
+
+        self.historyFileName = os.path.expanduser("~/.chip-lighting-history")
+
+        try:
+            import readline
+
+            if "libedit" in readline.__doc__:
+                readline.parse_and_bind("bind ^I rl_complete")
+            readline.set_completer_delims(" ")
+            try:
+                readline.read_history_file(self.historyFileName)
+            except IOError:
+                pass
+        except ImportError:
+            pass
+
+    command_names = [
+        "help"
+    ]
+
+    def parseline(self, line):
+        cmd, arg, line = Cmd.parseline(self, line)
+        if cmd:
+            cmd = self.shortCommandName(cmd)
+            line = cmd + " " + arg
+        return cmd, arg, line
+
+    def completenames(self, text, *ignored):
+        return [
+            name + " "
+            for name in LightingMgrCmd.command_names
+            if name.startswith(text) or self.shortCommandName(name).startswith(text)
+        ]
+
+    def shortCommandName(self, cmd):
+        return cmd.replace("-", "")
+
+    def precmd(self, line):
+        if not self.use_rawinput and line != "EOF" and line != "":
+            print(">>> " + line)
+        return line
+
+    def postcmd(self, stop, line):
+        if not stop and self.use_rawinput:
+            self.prompt = "chip-lighting > "
+        return stop
+
+    def postloop(self):
+        try:
+            import readline
+
+            try:
+                readline.write_history_file(self.historyFileName)
+            except IOError:
+                pass
+        except ImportError:
+            pass
+
+    def do_help(self, line):
+        """
+        help
+
+        Print the help
+        """
+        if line:
+            cmd, arg, unused = self.parseline(line)
+            try:
+                doc = getattr(self, "do_" + cmd).__doc__
+            except AttributeError:
+                doc = None
+            if doc:
+                self.stdout.write("%s\n" % textwrap.dedent(doc))
+            else:
+                self.stdout.write("No help on %s\n" % (line))
+        else:
+            self.print_topics(
+                "\nAvailable commands (type help <name> for more information):",
+                LightingMgrCmd.command_names,
+                15,
+                80,
+            )
 
 
 @PostAttributeChangeCallback
@@ -85,46 +181,33 @@ def attributeChangeCallback(
     size: int,
     value: bytes,
 ):
+    global dali_loop
     if endpoint == 1:
-        print("[callback] cluster={} attr={} value={}".format(clusterId, attributeId, list(value)))
-        # switch
         if clusterId == 6 and attributeId == 0:
-            if value and value[0] == 1:
-                print("[callback] light on")
-                switch_on()
+            if len(value) == 1 and value[0] == 1:
+                # print("[PY] light on")
+                future = asyncio.run_coroutine_threadsafe(
+                    dali_on(True), dali_loop)
+                future.result()
             else:
-                
-                print("[callback] light off")
-                switch_off()
-        # level (brightness)
+                # print("[PY] light off")
+                future = asyncio.run_coroutine_threadsafe(
+                    dali_on(False), dali_loop)
+                future.result()
         elif clusterId == 8 and attributeId == 0:
-            if value:
-                print("[callback] level {}".format(value[0]))
-                set_level(value[0])
-        # color
-        elif clusterId == 768:
-            if value:
-                global color
-                if attributeId == 0:
-                    print("[callback] color hue={}".format(value[0]))
-                    color['hue']=value[0]
-                elif attributeId == 1:
-                    print("[callback] color saturation={}".format(value[0]))
-                    color['saturation']=value[0]
-                elif attributeId == 7:
-                    print("[callback] color temperature={}".format(value[0]))
-                    set_color_temperature(value[0])
-
-                # we need both hue and saturation to set a new color
-                if (attributeId == 0 or attributeId == 1) and 'hue' in color and 'saturation' in color:
-                    print("[callback] color={}".format(color))
-                    set_color(color)
+            if len(value) == 2:
+                # print("[PY] level {}".format(value[0]))
+                future = asyncio.run_coroutine_threadsafe(
+                    dali_level(value[0]), dali_loop)
+                future.result()
+            else:
+                print("[PY] no level")
         else:
-            print("[callback] Error: unhandled cluster {} or attribute {}".format(
-                 clusterId, attributeId))
+            # print("[PY] [ERR] unhandled cluster {} or attribute {}".format(
+            #     clusterId, attributeId))
             pass
     else:
-        print("[callback] Error: unhandled endpoint {} ".format(endpoint))
+        print("[PY] [ERR] unhandled endpoint {} ".format(endpoint))
 
 
 class Lighting:
@@ -135,26 +218,19 @@ class Lighting:
 if __name__ == "__main__":
     l = Lighting()
 
-    print("Starting Tapo Bridge Lighting App")
+    lightMgrCmd = LightingMgrCmd()
+    print("Chip Lighting Device Shell")
+    print()
 
-    ip = os.environ['IP']
-    user = os.environ['USER']
-    password = os.environ['PASS']
+    print("Starting DALI async")
+    threads = []
+    t = threading.Thread(target=daliworker)
+    threads.append(t)
+    t.start()
 
-    dev = PyL530.L530(ip, user, password)
-
-    print("[tapo] handshake")
-    dev.handshake()
-    print("[tapo] login")
-    dev.login()
-
-    print("[tapo] ready")
-
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_forever()
+        lightMgrCmd.cmdloop()
     except KeyboardInterrupt:
-        print("Process interrupted")
-    finally:
-        loop.close()
-        print("Shutting down")
+        print("\nQuitting")
+
+    sys.exit(0)
