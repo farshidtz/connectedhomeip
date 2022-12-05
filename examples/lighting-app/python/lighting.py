@@ -40,7 +40,7 @@ def switch_on():
     global dev
     global switchedOn
 
-    print("switch on")
+    print("[tapo] switch on")
     dev.turnOn()
     switchedOn = True
 
@@ -48,7 +48,7 @@ def switch_off():
     global dev
     global switchedOn
 
-    print("switch off")
+    print("[tapo] switch off")
     dev.turnOff()
     switchedOn = False
 
@@ -59,20 +59,20 @@ def set_level(level: int):
     # The level setting is stored and resubmitted with every on/off command.
     # Skip when off or unknown, because setting level turns on the Tapo light.
     if switchedOn or switchedOn is None:
-        print("set level")
+        print("[tapo] set brightness level")
         dev.setBrightness(level)
 
 def set_color(level: dict):
     global dev
 
-    print("set color")
+    print("[tapo] set color")
     dev.setColor(level['hue'], level['saturation'])
 
 
 def set_color_temperature(kelvin: int):
     global dev
 
-    print("set color temperature")
+    print("[tapo] set color temperature")
     dev.setColorTemp(kelvin)
 
 
@@ -86,44 +86,45 @@ def attributeChangeCallback(
     value: bytes,
 ):
     if endpoint == 1:
-        print("[PT] cluster={} attr={} value={}".format(clusterId, attributeId, list(value)))
+        print("[callback] cluster={} attr={} value={}".format(clusterId, attributeId, list(value)))
+        # switch
         if clusterId == 6 and attributeId == 0:
-
             if value and value[0] == 1:
-                print("[PY] light on")
+                print("[callback] light on")
                 switch_on()
             else:
                 
-                print("[PY] light off")
+                print("[callback] light off")
                 switch_off()
+        # level (brightness)
         elif clusterId == 8 and attributeId == 0:
             if value:
-                print("[PY] level {}".format(value[0]))
+                print("[callback] level {}".format(value[0]))
                 set_level(value[0])
-            else:
-                print("[PY] no level")
+        # color
         elif clusterId == 768:
             if value:
                 global color
                 if attributeId == 0:
-                    print("[PY] color hue={}".format(value[0]))
+                    print("[callback] color hue={}".format(value[0]))
                     color['hue']=value[0]
                 elif attributeId == 1:
-                    print("[PY] color saturation={}".format(value[0]))
+                    print("[callback] color saturation={}".format(value[0]))
                     color['saturation']=value[0]
                 elif attributeId == 7:
-                    print("[PY] color temperature={}".format(value[0]))
+                    print("[callback] color temperature={}".format(value[0]))
                     set_color_temperature(value[0])
 
+                # we need both hue and saturation to set a new color
                 if (attributeId == 0 or attributeId == 1) and 'hue' in color and 'saturation' in color:
-                    print("[PY] color={}".format(color))
+                    print("[callback] color={}".format(color))
                     set_color(color)
         else:
-            print("[PY] [ERR] unhandled cluster {} or attribute {}".format(
+            print("[callback] Error: unhandled cluster {} or attribute {}".format(
                  clusterId, attributeId))
             pass
     else:
-        print("[PY] [ERR] unhandled endpoint {} ".format(endpoint))
+        print("[callback] Error: unhandled endpoint {} ".format(endpoint))
 
 
 class Lighting:
@@ -142,15 +143,18 @@ if __name__ == "__main__":
 
     dev = PyL530.L530(ip, user, password)
 
+    print("[tapo] handshake")
     dev.handshake()
+    print("[tapo] login")
     dev.login()
 
-    loop = asyncio.get_event_loop()
+    print("[tapo] ready")
 
+    loop = asyncio.get_event_loop()
     try:
         loop.run_forever()
     except KeyboardInterrupt:
         print("Process interrupted")
     finally:
         loop.close()
-        print("Successfully shutdown the service.")
+        print("Shutting down")
