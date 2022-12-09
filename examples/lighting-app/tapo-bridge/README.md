@@ -12,6 +12,12 @@ sudo apt install git gcc g++ libdbus-1-dev \
 # sudo apt install pkg-config libssl-dev libglib2.0-dev libavahi-client-dev libreadline-dev
 ```
 
+Install the bridge app dependencies:
+
+```
+sudo apt install alsa mpg321
+```
+
 ## Installation
 
 Build the Python/C library:
@@ -26,14 +32,20 @@ source scripts/activate.sh
 source ./out/python_env/bin/activate
 ```
 
-Install the dependencies:
+Install the Python dependencies inside the virtual env:
 
 ```shell
-sudo apt install alsa mpg321
 pip install -r requirements.txt
 ```
 
 ## Usage
+
+Copy and update the config file:
+
+```shell
+cp config.json.example config.json
+nano config.json
+```
 
 Run the Python lighting matter device:
 
