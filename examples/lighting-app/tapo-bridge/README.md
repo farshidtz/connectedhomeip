@@ -1,12 +1,24 @@
 # Python based lighting example (bridge) device to Tapo L530.
 
+## Dependencies
+
+Ubuntu 22.04:
+
+```
+sudo apt install git gcc g++ libdbus-1-dev \
+  ninja-build python3-venv python3-dev \
+  python3-pip libgirepository1.0-dev libcairo2-dev
+# maybe:
+# sudo apt install pkg-config libssl-dev libglib2.0-dev libavahi-client-dev libreadline-dev
+```
+
 ## Installation
 
 Build the Python/C library:
 
 ```shell
 cd ~/connectedhomeip/
-git submodule update --init
+scripts/checkout_submodules.py --shallow --platform linux
 source scripts/activate.sh
 
 ./scripts/build_python_device.sh --chip_detail_logging true
@@ -14,9 +26,10 @@ source scripts/activate.sh
 source ./out/python_env/bin/activate
 ```
 
-Install the python dependencies:
+Install the dependencies:
 
 ```shell
+sudo apt install alsa mpg321
 pip install -r requirements.txt
 ```
 
@@ -26,5 +39,35 @@ Run the Python lighting matter device:
 
 ```shell
 cd examples/lighting-app/tapo-bridge
-IP="tapo dev ip" USER="tapo user" PASS="tapo pass" python lighting.py
+python lighting.py
+```
+
+### Control with Chip Tool
+
+Commissioning:
+
+```bash
+chip-tool pairing ethernet 110 20202021 3840 192.168.1.111 5540
+```
+
+where:
+
+-   `110` is the assigned node id
+-   `20202021` is the pin code for the bridge app
+-   `3840` is the discriminator id
+-   `192.168.1.111` is the IP address of the host for the bridge
+-   `5540` the the port for the bridge
+
+Alternatively, to commission with discovery which works with DNS-SD:
+
+```bash
+chip-tool pairing onnetwork 110 20202021
+```
+
+Switching on/off:
+
+```bash
+chip-tool onoff on 110 1
+chip-tool onoff off 110 1
+chip-tool onoff toggle 110 1
 ```
