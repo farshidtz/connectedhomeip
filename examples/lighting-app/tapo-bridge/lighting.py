@@ -14,7 +14,7 @@
 #    limitations under the License.
 #
 
-from threading import Thread
+from threading import Thread, Event
 from chip.server import (
     GetLibraryHandle,
     NativeLibraryHandleMethodArguments,
@@ -24,7 +24,6 @@ from chip.server import (
 from chip.exceptions import ChipStackError
 
 import json
-import asyncio
 import time
 import subprocess
 
@@ -51,7 +50,6 @@ def switch_on(dev: dict):
     driver = dev['driver']
 
     print("[tapo] {}@{}: switch on".format(type, ip))
-    print(driver.getDeviceInfo())
     driver.turnOn()
 
 
@@ -217,18 +215,13 @@ if __name__ == "__main__":
                 print("[tapo] {}@{}: login".format(type, ip))
                 driver.login()
                 print("[tapo] {}@{}: ready ✅".format(type, ip))
+                # print(driver.getDeviceInfo())
             case 'party':
-                print('Nothing to initialize')
-
+                # Nothing to initialize
+                pass
             case other:
                 print('ERROR: Unknown device type:', type)
                 quit(1)
 
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_forever()
-    except KeyboardInterrupt:
-        print("Process interrupted")
-    finally:
-        loop.close()
-        print("Shutting down")
+    print('Ready...')
+    Event().wait()
