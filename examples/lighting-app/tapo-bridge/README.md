@@ -15,7 +15,7 @@ sudo apt install git gcc g++ libdbus-1-dev \
 Install the bridge app dependencies:
 
 ```
-sudo apt install alsa mpg321
+sudo apt install alsa mpg123
 ```
 
 ## Installation
