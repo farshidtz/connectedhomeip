@@ -179,6 +179,7 @@ class Lighting:
 
 
 if __name__ == "__main__":
+    print("Starting Tapo Bridge Lighting App")
     confFile = open("config.json")
     conf = json.load(confFile)
     confFile.close()
@@ -186,12 +187,11 @@ if __name__ == "__main__":
     endpoints = conf['endpoints']
     defaults = conf['defaults']
 
-    l = Lighting()
-
-    print("Starting Tapo Bridge Lighting App")
-
     user = conf['tplinkUsername']
     password = conf['tplinkPassword']
+    if not user or not password:
+        print("TP-Link account username or password is unset!")
+        quit(1)
     for id, device in endpoints.items():
         type = device['type']
         match type:
@@ -223,5 +223,7 @@ if __name__ == "__main__":
                 print('ERROR: Unknown device type:', type)
                 quit(1)
 
-    print('Ready...')
+    l = Lighting()
+
+    print('🚀 Ready...')
     Event().wait()
